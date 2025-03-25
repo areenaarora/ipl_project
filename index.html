@@ -10,6 +10,9 @@
         body {
             font-family: Arial, sans-serif;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .tooltip {
@@ -24,6 +27,15 @@
         .filters {
             margin-bottom: 20px;
         }
+
+        .top-players {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .chart-container {
+            display: flex;
+        }
     </style>
 </head>
 
@@ -36,7 +48,13 @@
         <label for="seasonFilter">Season:</label>
         <select id="seasonFilter"></select>
     </div>
-    <svg width="800" height="600"></svg>
+    <div class="chart-container">
+        <svg width="800" height="600"></svg>
+        <div class="top-players">
+            <h3>Top 5 Players</h3>
+            <div id="player-list"></div>
+        </div>
+    </div>
     <div class="tooltip"></div>
 
     <script>
@@ -53,10 +71,9 @@
         const tooltip = d3.select(".tooltip");
         const teamFilter = d3.select("#teamFilter");
         const seasonFilter = d3.select("#seasonFilter");
+        const playerList = d3.select("#player-list");
 
         d3.csv("IPL_data.csv").then(function (data) {
-            console.log("CSV Data Loaded:", data[0]);
-
             data.forEach(d => {
                 d.batting_score = +d.batting_score;
                 d.bowling_score = +d.bowling_score;
@@ -76,12 +93,12 @@
                 seasonFilter.append("option").text(season).attr("value", season);
             });
 
+            const orderedTypes = ["Overall Score", "Bowling Score", "Batting Score"];
             const typeToKey = {
                 "Batting Score": "batting_score",
                 "Bowling Score": "bowling_score",
                 "Overall Score": "overall_score"
             };
-
             const colors = { "Batting Score": "#1f77b4", "Bowling Score": "#ff7f0e", "Overall Score": "#2ca02c" };
 
             function updateChart() {
@@ -97,13 +114,15 @@
                 }
 
                 let formattedData = [];
-                Object.keys(typeToKey).forEach(type => {
-                    let key = typeToKey[type];
+                let playerSummary = "";
+
+                orderedTypes.forEach(label => {
+                    const key = typeToKey[label];
                     let sortedPlayers = filteredData
-                        .filter(d => d[key] != null && d[key] !== "" && !isNaN(d[key]))
+                        .filter(d => !isNaN(d[key]))
                         .map(d => ({
                             player: d.Player,
-                            type: type,
+                            type: label,
                             score: d[key]
                         }))
                         .sort((a, b) => b.score - a.score)
@@ -112,16 +131,33 @@
                     formattedData = formattedData.concat(sortedPlayers);
                 });
 
-                console.log("Filtered Data:", formattedData);
+                console.log({ formattedData });
+
+
+                orderedTypes.forEach(label => {
+                    playerSummary += `<h4>${label}</h4><ul>`;
+                    formattedData
+                        .filter(d => d.type === label)
+                        .sort((a, b) => b.score - a.score)
+                        .forEach((p, index) => {
+                            playerSummary += `<li>${index + 1}. ${p.player}: ${p.score}</li>`;
+                        });
+                    playerSummary += "</ul>";
+                });
+
+                playerList.html(playerSummary);
 
                 const xScale = d3.scaleLinear()
-                    .domain([-500, 1000])
+                    .domain([d3.min(formattedData, d => d.score) * 0.9 || 0, d3.max(formattedData, d => d.score) * 1.1 || 1000])
                     .range([0, width]);
 
                 const yScale = d3.scalePoint()
-                    .domain(["Batting Score", "Bowling Score", "Overall Score"])
+                    .domain(orderedTypes.reverse())
                     .range([height, 0])
                     .padding(1);
+
+                console.log({ orderedTypes, height });
+
 
                 svg.selectAll("g.axis").remove();
                 svg.append("g").attr("class", "axis")
@@ -129,18 +165,7 @@
                     .call(d3.axisBottom(xScale).ticks(5));
 
                 svg.append("g").attr("class", "axis")
-                    .attr("transform", `translate(${xScale(0)}, 0)`)
                     .call(d3.axisLeft(yScale));
-
-                svg.selectAll(".y-axis-line").remove();
-                svg.append("line")
-                    .attr("class", "y-axis-line")
-                    .attr("x1", xScale(0))
-                    .attr("x2", xScale(0))
-                    .attr("y1", 0)
-                    .attr("y2", height)
-                    .attr("stroke", "black")
-                    .attr("stroke-width", 2);
 
                 let circles = svg.selectAll("circle").data(formattedData);
                 circles.exit().remove();
@@ -150,16 +175,9 @@
                     .merge(circles)
                     .attr("cx", d => xScale(d.score))
                     .attr("cy", d => yScale(d.type))
-                    .attr("r", 8)
+                    .attr("r", 12)
                     .attr("fill", d => colors[d.type])
-                    .attr("opacity", 0.7)
-                    .on("mouseover", (event, d) => {
-                        tooltip.style("display", "block")
-                            .html(`${d.player} <br>Score: ${d.score}`)
-                            .style("left", (event.pageX + 5) + "px")
-                            .style("top", (event.pageY - 30) + "px");
-                    })
-                    .on("mouseout", () => tooltip.style("display", "none"));
+                    .attr("opacity", 0.7);
             }
 
             teamFilter.on("change", updateChart);
