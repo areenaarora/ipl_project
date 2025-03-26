@@ -239,7 +239,7 @@
                     .attr("id", "player-lists")
                     .style("position", "absolute")
                     .style("right", "200px") // Move to the right
-                    .style("top", "100px")  // Adjust vertical position
+                    .style("top", "50px")  // Adjust vertical position
                     .style("background", "white")
                     .style("padding", "10px")
                     .style("border", "1px solid black");
@@ -249,7 +249,10 @@
                     const categoryData = formattedData[category] || [];
 
                     const list = listContainer.append("div")
-                        .style("margin-bottom", "15px");
+                        .style("margin-bottom", "15px")
+                        .style("display", "flex")
+                        .style("flex-direction", "column")
+                        .style("align-items", "flex-start");
 
                     list.append("h3").text(category); // CATEGORY TITLE
 
@@ -257,7 +260,8 @@
                         list.append("p")
                             .text(`${i + 1}. ${d.player}`)
                             .style("font-size", "14px")
-                            .style("margin", "2px 0");
+                            .style("margin", "2px 0")
+                            .style("max-width", "fit-content");
                     });
                 });
 
