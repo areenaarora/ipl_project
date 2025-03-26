@@ -111,7 +111,7 @@
                     let topPlayers = filteredData
                         .sort((a, b) => b[key] - a[key])
                         .slice(0, 5)
-                        .map(d => ({ player: d.Player, type: category, score: d[key] }));
+                        .map(d => ({ ...d, player: d.Player, type: category, score: d[key] }));
                     formattedData.push(...topPlayers);
                 });
 
@@ -154,6 +154,30 @@
                     .attr("font-size", "12px")
                     .attr("fill", "black")
                     .attr("text-anchor", "start");
+
+                const labelOffset = {}; // Track offsets per category to prevent overlap
+
+                svg.selectAll(".player-label").remove();
+                svg.selectAll(".player-label")
+                    .data(formattedData)
+                    .enter()
+                    .append("text")
+                    .attr("class", "player-label")
+                    .attr("x", d => xScale(d.score))
+                    .attr("y", d => {
+                        let baseY = categoryY(d.type) - 15;
+                        if (!labelOffset[d.type]) labelOffset[d.type] = baseY;
+                        else labelOffset[d.type] += 15; // Push down if overlap is detected
+                        return labelOffset[d.type];
+                    })
+                    .text(d => d.Player)
+                    .attr("font-size", "12px")
+                    .attr("fill", "black")
+                    .attr("text-anchor", "middle");
+
+                // .style("transform", "rotate(45deg)")
+                // .style("transform-origin", d => `${minScores[d.type]}px ${categoryY(d.type)}px`)
+
 
                 svg.selectAll(".category-line")
                     .data(categories)
