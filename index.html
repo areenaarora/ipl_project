@@ -230,6 +230,36 @@
                     })
                     .on("mouseout", () => tooltip.style("opacity", 0));
 
+                // REMOVE OLD PLAYER LISTS
+                d3.select("#player-lists").remove();
+
+                // CREATE A CONTAINER FOR PLAYER LISTS
+                const listContainer = d3.select("body")
+                    .append("div")
+                    .attr("id", "player-lists")
+                    .style("position", "absolute")
+                    .style("right", "200px") // Move to the right
+                    .style("top", "100px")  // Adjust vertical position
+                    .style("background", "white")
+                    .style("padding", "10px")
+                    .style("border", "1px solid black");
+
+                // LOOP THROUGH EACH CATEGORY AND DISPLAY TOP PLAYERS
+                categories.forEach((category) => {
+                    const categoryData = formattedData[category] || [];
+
+                    const list = listContainer.append("div")
+                        .style("margin-bottom", "15px");
+
+                    list.append("h3").text(category); // CATEGORY TITLE
+
+                    categoryData.forEach((d, i) => {
+                        list.append("p")
+                            .text(`${i + 1}. ${d.player}`)
+                            .style("font-size", "14px")
+                            .style("margin", "2px 0");
+                    });
+                });
 
 
                 // .style("transform", "rotate(45deg)")
