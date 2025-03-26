@@ -208,18 +208,25 @@
                     .attr("font-weight", "bold");
 
 
-                svg.selectAll(".data-circle").remove();
-                svg
-                    .selectAll(".data-circle")
+                // Remove old elements before adding new ones
+                svg.selectAll(".data-circle, .data-symbol").remove();
+
+                // Append symbols (🏏 for Batting, 🎾 for Bowling, ⚫ for Overall)
+                svg.selectAll(".data-symbol")
                     .data(Object.values(formattedData).flat())
                     .enter()
-                    .append("circle")
-                    .attr("class", "data-circle")
-                    .attr("cx", (d) => xScale[d.type](d.score))
-                    .attr("cy", (d) => categoryY(d.type))
-                    .attr("r", 8)
-                    .attr("fill", "steelblue")
-                    .attr("opacity", 0.7)
+                    .append("text")
+                    .attr("class", "data-symbol")
+                    .attr("x", (d) => xScale[d.type](d.score))
+                    .attr("y", (d) => categoryY(d.type) + 5) // Adjust vertical alignment
+                    .attr("font-size", "20px") // Emoji size
+                    .attr("text-anchor", "middle")
+                    .text((d) =>
+                        d.type === "Batting Score" ? "🏏" :
+                            d.type === "Bowling Score" ? "🎾" :
+                                d.type === "Overall Score" ? "🏆" :
+                                    "⚫" // Default for Overall Score
+                    )
                     .on("mouseover", (event, d) => {
                         tooltip
                             .style("display", "block")
@@ -229,6 +236,7 @@
                             .style("opacity", 1);
                     })
                     .on("mouseout", () => tooltip.style("opacity", 0));
+
 
                 // REMOVE OLD PLAYER LISTS
                 d3.select("#player-lists").remove();
