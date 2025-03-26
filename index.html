@@ -4,186 +4,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPL Player Performance</title>
+    <title>IPL Scores Visualization</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
+        }
+
+        .filters {
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .filters label,
+        .filters select {
+            margin: 0 10px;
         }
 
         .tooltip {
             position: absolute;
-            background: white;
-            border: 1px solid #ccc;
+            text-align: center;
             padding: 5px;
-            display: none;
+            font-size: 12px;
+            background: lightgray;
+            border: 1px solid #ddd;
+            border-radius: 5px;
             pointer-events: none;
-        }
-
-        .filters {
-            margin-bottom: 20px;
-        }
-
-        .top-players {
-            margin-top: 20px;
-            text-align: left;
-        }
-
-        .chart-container {
-            display: flex;
+            opacity: 0;
         }
     </style>
 </head>
 
 <body>
-    <h2>IPL Player Performance Scatter Plot</h2>
+    <h2>IPL Top Players by Score Category</h2>
+    <svg id="chart"></svg>
     <div class="filters">
-        <label for="teamFilter">Team:</label>
-        <select id="teamFilter"></select>
-
-        <label for="seasonFilter">Season:</label>
-        <select id="seasonFilter"></select>
+        <label for="teamFilter">Select Team:</label>
+        <select id="teamFilter">
+            <option value="all">All</option>
+        </select>
+        <label for="yearFilter">Select Year:</label>
+        <select id="yearFilter">
+            <option value="all">All</option>
+        </select>
     </div>
-    <div class="chart-container">
-        <svg width="800" height="600"></svg>
-        <div class="top-players">
-            <h3>Top 5 Players</h3>
-            <div id="player-list"></div>
-        </div>
-    </div>
-    <div class="tooltip"></div>
-
+    <div class="tooltip" id="tooltip"></div>
     <script>
-        const margin = { top: 50, right: 30, bottom: 50, left: 150 };
-        const width = 800 - margin.left - margin.right;
-        const height = 600 - margin.top - margin.bottom;
+        const margin = { top: 50, right: 100, bottom: 50, left: 200 },
+            width = 800 - margin.left - margin.right,
+            height = 400 - margin.top - margin.bottom;
 
-        const svg = d3.select("svg")
-            .attr("width", 800)
-            .attr("height", 600)
+        const svg = d3.select("#chart")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        const tooltip = d3.select(".tooltip");
-        const teamFilter = d3.select("#teamFilter");
-        const seasonFilter = d3.select("#seasonFilter");
-        const playerList = d3.select("#player-list");
+        const tooltip = d3.select("#tooltip");
 
-        d3.csv("IPL_data.csv").then(function (data) {
+        const categories = ["Batting Score", "Bowling Score", "Overall Score"];
+        const categoryY = d3.scalePoint()
+            .domain(categories)
+            .range([0, height])
+            .padding(0.5);
+
+        d3.csv("IPL_data.csv").then(data => {
             data.forEach(d => {
-                d.batting_score = +d.batting_score;
-                d.bowling_score = +d.bowling_score;
-                d.overall_score = +d.overall_score;
+                d.batting_score = +d.batting_score || 0;
+                d.bowling_score = +d.bowling_score || 0;
+                d.overall_score = +d.overall_score || 0;
             });
 
-            const teams = [...new Set(data.map(d => d.Team))];
-            const seasons = [...new Set(data.map(d => d.Season))];
+            const teams = Array.from(new Set(data.map(d => d.Team)));
+            const seasons = Array.from(new Set(data.map(d => d.Season)));
 
-            teamFilter.append("option").text("All").attr("value", "All");
+            const teamFilter = d3.select("#teamFilter");
             teams.forEach(team => {
-                teamFilter.append("option").text(team).attr("value", team);
+                teamFilter.append("option").attr("value", team).text(team);
             });
 
-            seasonFilter.append("option").text("All").attr("value", "All");
+            const yearFilter = d3.select("#yearFilter");
             seasons.forEach(season => {
-                seasonFilter.append("option").text(season).attr("value", season);
+                yearFilter.append("option").attr("value", season).text(season);
             });
 
-            const orderedTypes = ["Batting Score", "Bowling Score", "Overall Score"];
-            const typeToKey = {
-                "Batting Score": "batting_score",
-                "Bowling Score": "bowling_score",
-                "Overall Score": "overall_score"
-            };
-            const colors = { "Batting Score": "#1f77b4", "Bowling Score": "#ff7f0e", "Overall Score": "#2ca02c" };
+            const xScale = d3.scaleLinear()
+                .range([0, width]);
 
             function updateChart() {
                 let filteredData = data;
                 const selectedTeam = teamFilter.node().value;
-                const selectedSeason = seasonFilter.node().value;
+                const selectedYear = yearFilter.node().value;
 
-                if (selectedTeam !== "All") {
+                if (selectedTeam !== "all") {
                     filteredData = filteredData.filter(d => d.Team === selectedTeam);
                 }
-                if (selectedSeason !== "All") {
-                    filteredData = filteredData.filter(d => d.Season === selectedSeason);
+                if (selectedYear !== "all") {
+                    filteredData = filteredData.filter(d => d.Season === selectedYear);
                 }
 
-                let formattedData = [];
-                let playerSummary = "";
-
-                orderedTypes.forEach(label => {
-                    const key = typeToKey[label];
-                    let sortedPlayers = filteredData
-                        .filter(d => !isNaN(d[key]))
-                        .map(d => ({
-                            player: d.Player,
-                            type: label,
-                            score: d[key]
-                        }))
-                        .sort((a, b) => b.score - a.score)
-                        .slice(0, 5);
-
-                    formattedData = formattedData.concat(sortedPlayers);
+                const formattedData = [];
+                categories.forEach(category => {
+                    let key = category.toLowerCase().replace(" ", "_");
+                    let topPlayers = filteredData
+                        .sort((a, b) => b[key] - a[key])
+                        .slice(0, 5)
+                        .map(d => ({ player: d.Player, type: category, score: d[key] }));
+                    formattedData.push(...topPlayers);
                 });
 
-                formattedData.sort((a, b) => orderedTypes.indexOf(a.type) - orderedTypes.indexOf(b.type));
+                xScale.domain([0, d3.max(formattedData, d => d.score)]);
 
-                orderedTypes.forEach(label => {
-                    playerSummary += `<h4>${label}</h4><ul>`;
-                    formattedData
-                        .filter(d => d.type === label)
-                        .forEach((p, index) => {
-                            playerSummary += `<li>${index + 1}. ${p.player}: ${p.score}</li>`;
-                        });
-                    playerSummary += "</ul>";
-                });
+                svg.selectAll(".category-line, .range-label-left, .range-label-right, .category-label").remove();
 
-                playerList.html(playerSummary);
+                const minScores = {
+                    "Batting Score": d3.min(data, d => d.batting_score),
+                    "Bowling Score": d3.min(data, d => d.bowling_score),
+                    "Overall Score": d3.min(data, d => d.overall_score)
+                };
 
-                const xScale = d3.scaleLinear()
-                    .domain([d3.min(formattedData, d => d.score) * 0.9 || 0, d3.max(formattedData, d => d.score) * 1.1 || 1000])
-                    .range([0, width]);
+                const maxScores = {
+                    "Batting Score": d3.max(data, d => d.batting_score),
+                    "Bowling Score": d3.max(data, d => d.bowling_score),
+                    "Overall Score": d3.max(data, d => d.overall_score)
+                };
 
-                const yScale = d3.scalePoint()
-                    .domain(orderedTypes)
-                    .range([height, 0])
-                    .padding(1);
+                svg.selectAll(".range-label-left")
+                    .data(categories)
+                    .enter()
+                    .append("text")
+                    .attr("class", "range-label-left")
+                    .attr("x", -5)
+                    .attr("y", d => categoryY(d) + 5)
+                    .text(d => minScores[d])
+                    .attr("font-size", "12px")
+                    .attr("fill", "black")
+                    .attr("text-anchor", "end");
 
-                svg.selectAll("g.axis").remove();
-                svg.append("g").attr("class", "axis")
-                    .attr("transform", `translate(0,${height})`)
-                    .call(d3.axisBottom(xScale).ticks(5));
+                svg.selectAll(".range-label-right")
+                    .data(categories)
+                    .enter()
+                    .append("text")
+                    .attr("class", "range-label-right")
+                    .attr("x", width + 20)
+                    .attr("y", d => categoryY(d) + 5)
+                    .text(d => maxScores[d])
+                    .attr("font-size", "12px")
+                    .attr("fill", "black")
+                    .attr("text-anchor", "start");
 
-                svg.append("g").attr("class", "axis")
-                    .call(d3.axisLeft(yScale));
+                svg.selectAll(".category-line")
+                    .data(categories)
+                    .enter()
+                    .append("line")
+                    .attr("class", "category-line")
+                    .attr("x1", 0)
+                    .attr("x2", width)
+                    .attr("y1", d => categoryY(d))
+                    .attr("y2", d => categoryY(d))
+                    .attr("stroke", "#ccc")
+                    .attr("stroke-width", 2);
 
-                let circles = svg.selectAll("circle").data(formattedData);
-                circles.exit().remove();
+                svg.selectAll(".category-label")
+                    .data(categories)
+                    .enter()
+                    .append("text")
+                    .attr("class", "category-label")
+                    .attr("x", -margin.left + 50)
+                    .attr("y", d => categoryY(d) + 5)
+                    .text(d => d)
+                    .attr("font-size", "14px")
+                    .attr("fill", "black");
 
-                circles.enter()
+                svg.selectAll(".data-circle").remove();
+                svg.selectAll(".data-circle")
+                    .data(formattedData)
+                    .enter()
                     .append("circle")
-                    .merge(circles)
+                    .attr("class", "data-circle")
                     .attr("cx", d => xScale(d.score))
-                    .attr("cy", d => yScale(d.type))
-                    .attr("r", 12)
-                    .attr("fill", d => colors[d.type])
+                    .attr("cy", d => categoryY(d.type))
+                    .attr("r", 8)
+                    .attr("fill", "steelblue")
                     .attr("opacity", 0.7)
                     .on("mouseover", (event, d) => {
                         tooltip.style("display", "block")
-                            .html(`${d.player}: ${d.score}`)
-                            .style("left", `${event.pageX + 10}px`)
-                            .style("top", `${event.pageY - 10}px`);
+                            .html(`${d.player}<br>Type: ${d.type}<br>Score: ${d.score}`)
+                            .style("left", (event.pageX + 5) + "px")
+                            .style("top", (event.pageY - 30) + "px")
+                            .style("opacity", 1);
                     })
-                    .on("mouseout", () => tooltip.style("display", "none"));
+                    .on("mouseout", () => tooltip.style("opacity", 0));
             }
 
             teamFilter.on("change", updateChart);
-            seasonFilter.on("change", updateChart);
+            yearFilter.on("change", updateChart);
 
             updateChart();
         });
