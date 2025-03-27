@@ -22,6 +22,14 @@
         #chart-container {
             margin: 20px;
         }
+
+        .tooltip {
+            position: absolute;
+            background: lightgray;
+            padding: 5px;
+            border-radius: 5px;
+            display: none;
+        }
     </style>
 </head>
 
@@ -46,12 +54,7 @@
                 .attr("transform", `translate(${margin.left},${margin.top})`);
 
             const tooltip = d3.select("body").append("div")
-                .attr("class", "tooltip")
-                .style("position", "absolute")
-                .style("background", "lightgray")
-                .style("padding", "5px")
-                .style("border-radius", "5px")
-                .style("display", "none");
+                .attr("class", "tooltip");
 
             const xScale = d3.scaleLinear().range([0, width]);
             const yScale = d3.scaleLinear().range([height, 0]);
@@ -74,6 +77,9 @@
                 .attr("text-anchor", "middle")
                 .attr("transform", "rotate(-90)")
                 .text("Overall Performance Score");
+
+            svg.append("text").attr("class", "avg-performance-label");
+            svg.append("text").attr("class", "avg-salary-label");
 
             d3.csv("merged_sal.csv").then(data => {
                 data = data.filter(d => +d.salary > 0);
@@ -112,7 +118,8 @@
 
                     svg.select(".y-axis").transition().call(yAxis);
 
-                    svg.selectAll(".avg-line").remove();
+                    svg.selectAll(".avg-line, .avg-salary-line, .dot").remove();
+
                     svg.append("line")
                         .attr("class", "avg-line")
                         .attr("x1", 0)
@@ -123,7 +130,6 @@
                         .attr("stroke-width", 2)
                         .attr("stroke-dasharray", "5 5");
 
-                    svg.selectAll(".avg-salary-line").remove();
                     svg.append("line")
                         .attr("class", "avg-salary-line")
                         .attr("x1", xScale(avgSalary))
@@ -134,11 +140,26 @@
                         .attr("stroke-width", 2)
                         .attr("stroke-dasharray", "5 5");
 
-                    const circles = svg.selectAll("circle").data(filteredData, d => d.Name);
+                    svg.select(".avg-performance-label")
+                        .attr("x", width - 100)
+                        .attr("y", yScale(avgPerformance) - 5)
+                        .attr("fill", "red")
+                        .text("Avg Performance");
 
-                    circles.enter().append("circle")
+                    svg.select(".avg-salary-label")
+                        .attr("x", xScale(avgSalary) + 5)
+                        .attr("y", 5)
+                        .attr("fill", "blue")
+                        .text("Avg Salary");
+
+                    svg.selectAll(".dot")
+                        .data(filteredData, d => d.Name)
+                        .enter().append("circle")
+                        .attr("class", "dot")
                         .attr("r", 5)
                         .attr("fill", "steelblue").attr("opacity", 0.7)
+                        .attr("cx", d => xScale(d.salary))
+                        .attr("cy", d => yScale(d.overall_score))
                         .on("mouseover", (event, d) => {
                             tooltip.style("display", "block")
                                 .html(`<strong>${d.name || "Unknown"}</strong><br>Salary: ₹${d.salary}<br>Performance: ${d.overall_score}`);
@@ -147,25 +168,7 @@
                             tooltip.style("left", (event.pageX + 10) + "px")
                                 .style("top", (event.pageY - 10) + "px");
                         })
-                        .on("mouseout", () => tooltip.style("display", "none"))
-                        .merge(circles)
-                        .transition()
-                        .attr("cx", d => xScale(d.salary))
-                        .attr("cy", d => yScale(d.overall_score));
-
-                    circles.exit().remove();
-
-                    svg.append("text")
-                        .attr("x", width - 100)
-                        .attr("y", yScale(avgPerformance) - 5)
-                        .attr("fill", "red")
-                        .text("Avg Performance");
-
-                    svg.append("text")
-                        .attr("x", xScale(avgSalary) + 5)
-                        .attr("y", 5)
-                        .attr("fill", "blue")
-                        .text("Avg Salary");
+                        .on("mouseout", () => tooltip.style("display", "none"));
                 }
                 updateChart();
             }).catch(error => console.error("Error loading CSV file:", error));
