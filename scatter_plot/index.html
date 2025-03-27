@@ -88,6 +88,39 @@
 
             d3.select("#season-filter").property("value", seasons[0]);
 
+            // Add quadrant labels
+            svg.append("text")
+                .attr("class", "quadrant-label")
+                .attr("x", width - 150)
+                .attr("y", 20)
+                .attr("text-anchor", "middle")
+                // .style("font-weight", "bold")
+                .text("Above average performance, above average pay");
+
+            svg.append("text")
+                .attr("class", "quadrant-label")
+                .attr("x", width - 150)
+                .attr("y", height - 20)
+                .attr("text-anchor", "middle")
+                // .style("font-weight", "bold")
+                .text("Below average performance, above average pay");
+
+            svg.append("text")
+                .attr("class", "quadrant-label")
+                .attr("x", 150)
+                .attr("y", height - 20)
+                .attr("text-anchor", "middle")
+                // .style("font-weight", "bold")
+                .text("Below average performance, below average pay");
+
+            svg.append("text")
+                .attr("class", "quadrant-label")
+                .attr("x", 150)
+                .attr("y", 20)
+                .attr("text-anchor", "middle")
+                // .style("font-weight", "bold")
+                .text("Above average performance, below average pay");
+
             function updateChart() {
                 console.log("Updating chart...");
                 console.log("Updating chart...");
