@@ -20,8 +20,8 @@
         }
 
         table {
-            /* width: 80%; */
-            /* border-collapse: collapse; */
+            width: 100%;
+            border-collapse: collapse;
         }
 
         th,
@@ -34,26 +34,57 @@
         th {
             background-color: #f4f4f4;
             cursor: pointer;
+            position: relative;
         }
 
         input {
             margin-bottom: 10px;
             padding: 5px;
-            min-width: 300px;
+            width: 60%;
         }
 
-        h1 {
-            font-size: 36px;
+        .dropdown {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            display: none;
+            z-index: 10;
+            max-height: 200px;
+            overflow-y: auto;
+            width: max-content;
+        }
+
+        .dropdown div {
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        .dropdown div:hover {
+            background: #f0f0f0;
+        }
+
+        .dropdown-indicator {
+            margin-left: 5px;
+            font-size: 12px;
+            color: gray;
+        }
+
+        .pagination {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .pagination button {
+            padding: 5px 10px;
+            margin: 5px;
+            cursor: pointer;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-
-        <head>
-            <h1>IPL players' salaries, teams and overall performance score</h1>
-        </head>
+        <h1>IPL players' salaries, teams and overall performance score</h1>
         <input type="text" id="search" placeholder="Search...">
         <table>
             <thead>
@@ -61,40 +92,109 @@
             </thead>
             <tbody id="table-body"></tbody>
         </table>
+        <div class="pagination">
+            <button id="prev-page" disabled>Previous Page</button>
+            <span id="page-info"></span>
+            <button id="next-page">Next Page</button>
+        </div>
+        <script>
+            d3.csv("salaries_with_performance.csv").then(data => {
+                const columns = Object.keys(data[0]);
+                const tableHeader = d3.select("#table-header");
+                const tableBody = d3.select("#table-body");
+                const searchInput = d3.select("#search");
+                const prevPageBtn = d3.select("#prev-page");
+                const nextPageBtn = d3.select("#next-page");
+                const pageInfo = d3.select("#page-info");
+
+                let currentPage = 1;
+                const rowsPerPage = 30;
+                let filteredData = data;
+
+                function renderTable(page) {
+                    tableBody.html("");
+                    let start = (page - 1) * rowsPerPage;
+                    let end = start + rowsPerPage;
+                    let paginatedData = filteredData.slice(start, end);
+
+                    paginatedData.forEach(row => {
+                        const tr = tableBody.append("tr");
+                        columns.forEach(col => {
+
+                            if (col === "Salary") {
+                                const parsed_salary = Number(row[col])
+                                const formatted_salary = (new Intl.NumberFormat("en-IN")).format(parsed_salary)
+
+                                tr.append("td").text("₹" + formatted_salary)
+                            } else {
+
+                                tr.append("td").text(row[col])
+                            }
+                        })
+                    });
+
+                    pageInfo.text(`Page ${page} of ${Math.ceil(filteredData.length / rowsPerPage)}`);
+                    prevPageBtn.attr("disabled", page === 1 ? true : null);
+                    nextPageBtn.attr("disabled", end >= filteredData.length ? true : null);
+                }
+
+                nextPageBtn.on("click", () => {
+                    if (currentPage * rowsPerPage < filteredData.length) {
+                        currentPage++;
+                        renderTable(currentPage);
+                    }
+                });
+
+                prevPageBtn.on("click", () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderTable(currentPage);
+                    }
+                });
+
+                searchInput.on("input", function () {
+                    const keyword = this.value.toLowerCase();
+                    filteredData = data.filter(row =>
+                        columns.some(col => row[col].toLowerCase().includes(keyword))
+                    );
+                    currentPage = 1;
+                    renderTable(currentPage);
+                });
+
+                columns.forEach(col => {
+                    const th = tableHeader.append("th").style("position", "relative");
+                    const headerSpan = th.append("span").style("cursor", "pointer");
+                    headerSpan.text(col);
+                    headerSpan.append("span").attr("class", "dropdown-indicator").text(" ▼");
+
+                    headerSpan.on("click", function (event) {
+                        d3.selectAll(".dropdown").style("display", "none");
+                        const currentDisplay = dropdown.style("display");
+                        dropdown.style("display", currentDisplay === "block" ? "none" : "block");
+                        event.stopPropagation();
+                    });
+
+                    const dropdown = th.append("div").attr("class", "dropdown");
+                    const uniqueValues = [...new Set(data.map(d => d[col]))].sort();
+
+                    uniqueValues.forEach(value => {
+                        dropdown.append("div").text(value).on("click", function () {
+                            filteredData = data.filter(d => d[col] === value);
+                            currentPage = 1;
+                            renderTable(currentPage);
+                            dropdown.style("display", "none");
+                        });
+                    });
+                });
+
+                document.addEventListener("click", function () {
+                    d3.selectAll(".dropdown").style("display", "none");
+                });
+
+                renderTable(currentPage);
+            });
+        </script>
     </div>
-    <script>
-        d3.csv("salaries_with_performance.csv").then(data => {
-            const columns = Object.keys(data[0]);
-            const tableHeader = d3.select("#table-header");
-            const tableBody = d3.select("#table-body");
-            const searchInput = d3.select("#search");
-
-            function renderTable(filteredData) {
-                tableBody.html("");
-                filteredData.forEach(row => {
-                    const tr = tableBody.append("tr");
-                    columns.forEach(col => tr.append("td").text(row[col]));
-                });
-            }
-
-            columns.forEach(col => {
-                tableHeader.append("th").text(col).on("click", function () {
-                    data.sort((a, b) => a[col] > b[col] ? 1 : -1);
-                    renderTable(data);
-                });
-            });
-
-            searchInput.on("input", function () {
-                const keyword = this.value.toLowerCase();
-                const filteredData = data.filter(row =>
-                    columns.some(col => row[col].toLowerCase().includes(keyword))
-                );
-                renderTable(filteredData);
-            });
-
-            renderTable(data);
-        });
-    </script>
 </body>
 
 </html>
