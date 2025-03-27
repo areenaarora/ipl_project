@@ -40,9 +40,7 @@
         const xAxis = d3.axisBottom(xScale).ticks(10, ",.0f");
         const yAxis = d3.axisLeft(yScale);
 
-        svg.append("g")
-            .attr("transform", `translate(0,${height})`)
-            .attr("class", "x-axis");
+
 
         svg.append("g").attr("class", "y-axis");
 
@@ -77,6 +75,21 @@
 
                 svg.select(".x-axis").transition().call(xAxis);
                 svg.select(".y-axis").transition().call(yAxis);
+
+                // Add horizontal line at y = 0
+                const zeroLine = svg.selectAll(".zero-line").data([0]);
+
+                zeroLine.enter().append("line")
+                    .attr("class", "zero-line")
+                    .merge(zeroLine)
+                    .transition()
+                    .attr("x1", 0)
+                    .attr("x2", width)
+                    .attr("y1", yScale(0))
+                    .attr("y2", yScale(0))
+                    .attr("stroke", "black")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "4 2");
 
                 const circles = svg.selectAll("circle").data(filteredData, d => d.Name);
 
