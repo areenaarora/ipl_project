@@ -35,6 +35,15 @@
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
+        // Tooltip setup
+        const tooltip = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("position", "absolute")
+            .style("background", "lightgray")
+            .style("padding", "5px")
+            .style("border-radius", "5px")
+            .style("display", "none");
+
         const xScale = d3.scaleLog().range([0, width]);
         const yScale = d3.scaleLinear().range([height, 0]);
         const xAxis = d3.axisBottom(xScale).ticks(10, ",.0f");
@@ -43,6 +52,23 @@
 
 
         svg.append("g").attr("class", "y-axis");
+
+        // Add X-axis label
+        svg.append("text")
+            .attr("class", "x-label")
+            .attr("x", width / 2)
+            .attr("y", height + 40)
+            .attr("text-anchor", "middle")
+            .text("Salary (USD)");
+
+        // Add Y-axis label
+        svg.append("text")
+            .attr("class", "y-label")
+            .attr("x", -height / 2)
+            .attr("y", -40)
+            .attr("text-anchor", "middle")
+            .attr("transform", "rotate(-90)")
+            .text("Overall Performance Score");
 
         d3.csv("salaries_with_performance.csv").then(data => {
             data.forEach(d => {
@@ -64,9 +90,28 @@
 
             function updateChart() {
                 console.log("Updating chart...");
+                console.log("Updating chart...");
                 const selectedSeason = +d3.select("#season-filter").node().value;
                 const filteredData = data.filter(d => d.Season === selectedSeason && !isNaN(d["Overall Performance Score"]));
                 console.log("Filtered Data:", filteredData);
+
+                // Compute average performance score for the season
+                const avgPerformance = d3.mean(filteredData, d => d["Overall Performance Score"]);
+
+                // Add or update the average performance line
+                const avgLine = svg.selectAll(".avg-line").data([avgPerformance]);
+
+                avgLine.enter().append("line")
+                    .attr("class", "avg-line")
+                    .merge(avgLine)
+                    .transition()
+                    .attr("x1", 0)
+                    .attr("x2", width)
+                    .attr("y1", yScale(avgPerformance))
+                    .attr("y2", yScale(avgPerformance))
+                    .attr("stroke", "red")
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", "5 5");
 
                 if (filteredData.length === 0) return;
 
@@ -75,6 +120,16 @@
 
                 svg.select(".x-axis").transition().call(xAxis);
                 svg.select(".y-axis").transition().call(yAxis);
+
+                // Add X-axis with tick marks at y = 0
+                const xAxisGroup = svg.selectAll(".x-axis").data([0]);
+
+                xAxisGroup.enter().append("g")
+                    .attr("class", "x-axis")
+                    .merge(xAxisGroup)
+                    .transition()
+                    .attr("transform", `translate(0,${yScale(0)})`)
+                    .call(xAxis);
 
                 // Add horizontal line at y = 0
                 const zeroLine = svg.selectAll(".zero-line").data([0]);
@@ -95,7 +150,16 @@
 
                 circles.enter().append("circle")
                     .attr("r", 5)
-                    .attr("fill", "steelblue")
+                    .attr("fill", "steelblue").attr("opacity", 0.7)
+                    .on("mouseover", (event, d) => {
+                        tooltip.style("display", "block")
+                            .html(`<strong>${d.Name}</strong><br>Team: ${d.Team}<br>Performance: ${d["Overall Performance Score"]}<br>Salary: $${d.Salary}`);
+                    })
+                    .on("mousemove", (event) => {
+                        tooltip.style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 10) + "px");
+                    })
+                    .on("mouseout", () => tooltip.style("display", "none"))
                     .merge(circles)
                     .transition()
                     .attr("cx", d => xScale(d.Salary))
