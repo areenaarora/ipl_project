@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPL Salaries vs Performance</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #chart-container {
+            margin: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>IPL Player Salaries vs Performance</h2>
+    <label for="season-filter">Select Season:</label>
+    <select id="season-filter"></select>
+    <div id="chart-container"></div>
+
+    <script>
+        const margin = { top: 20, right: 30, bottom: 50, left: 60 },
+            width = 800 - margin.left - margin.right,
+            height = 500 - margin.top - margin.bottom;
+
+        const svg = d3.select("#chart-container")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const xScale = d3.scaleLog().range([0, width]);
+        const yScale = d3.scaleLinear().range([height, 0]);
+        const xAxis = d3.axisBottom(xScale).ticks(10, ",.0f");
+        const yAxis = d3.axisLeft(yScale);
+
+        svg.append("g")
+            .attr("transform", `translate(0,${height})`)
+            .attr("class", "x-axis");
+
+        svg.append("g").attr("class", "y-axis");
+
+        d3.csv("salaries_with_performance.csv").then(data => {
+            data.forEach(d => {
+                d.Salary = +d.Salary;
+                d["Overall Performance Score"] = +d["Overall Performance Score"];
+                d.Season = +d.Season;
+            });
+
+            const seasons = [...new Set(data.map(d => d.Season))].sort();
+            const dropdown = d3.select("#season-filter")
+                .on("change", updateChart)
+                .selectAll("option")
+                .data(seasons)
+                .enter().append("option")
+                .attr("value", d => d)
+                .text(d => d);
+
+            d3.select("#season-filter").property("value", seasons[0]);
+
+            function updateChart() {
+                console.log("Updating chart...");
+                const selectedSeason = +d3.select("#season-filter").node().value;
+                const filteredData = data.filter(d => d.Season === selectedSeason && !isNaN(d["Overall Performance Score"]));
+                console.log("Filtered Data:", filteredData);
+
+                if (filteredData.length === 0) return;
+
+                xScale.domain(d3.extent(filteredData, d => d.Salary)).nice();
+                yScale.domain(d3.extent(filteredData, d => d["Overall Performance Score"])).nice();
+
+                svg.select(".x-axis").transition().call(xAxis);
+                svg.select(".y-axis").transition().call(yAxis);
+
+                const circles = svg.selectAll("circle").data(filteredData, d => d.Name);
+
+                circles.enter().append("circle")
+                    .attr("r", 5)
+                    .attr("fill", "steelblue")
+                    .merge(circles)
+                    .transition()
+                    .attr("cx", d => xScale(d.Salary))
+                    .attr("cy", d => yScale(d["Overall Performance Score"]));
+
+                circles.exit().remove();
+            }
+
+            updateChart();
+        }).catch(error => console.error("Error loading CSV file:", error));
+    </script>
+</body>
+
+</html>
