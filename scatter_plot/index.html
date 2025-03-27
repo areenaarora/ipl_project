@@ -35,7 +35,6 @@
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
 
-        // Tooltip setup
         const tooltip = d3.select("body").append("div")
             .attr("class", "tooltip")
             .style("position", "absolute")
@@ -49,11 +48,8 @@
         const xAxis = d3.axisBottom(xScale).ticks(10, ",.0f");
         const yAxis = d3.axisLeft(yScale);
 
-
-
         svg.append("g").attr("class", "y-axis");
 
-        // Add X-axis label
         svg.append("text")
             .attr("class", "x-label")
             .attr("x", width / 2)
@@ -61,7 +57,6 @@
             .attr("text-anchor", "middle")
             .text("Salary (USD)");
 
-        // Add Y-axis label
         svg.append("text")
             .attr("class", "y-label")
             .attr("x", -height / 2)
@@ -70,15 +65,16 @@
             .attr("transform", "rotate(-90)")
             .text("Overall Performance Score");
 
-        d3.csv("salaries_with_performance.csv").then(data => {
+        d3.csv("merged_sal.csv").then(data => {
+            data = data.filter(d => +d.salary > 0);
             data.forEach(d => {
-                d.Salary = +d.Salary;
-                d["Overall Performance Score"] = +d["Overall Performance Score"];
-                d.Season = +d.Season;
+                d.salary = +d.salary;
+                d.overall_score = +d.overall_score;
+                d.season = +d.season;
             });
 
-            const seasons = [...new Set(data.map(d => d.Season))].sort();
-            const dropdown = d3.select("#season-filter")
+            const seasons = [...new Set(data.map(d => d.season))].sort();
+            d3.select("#season-filter")
                 .on("change", updateChart)
                 .selectAll("option")
                 .data(seasons)
@@ -88,98 +84,20 @@
 
             d3.select("#season-filter").property("value", seasons[0]);
 
-            // Add quadrant labels
-            svg.append("text")
-                .attr("class", "quadrant-label")
-                .attr("x", width - 150)
-                .attr("y", 20)
-                .attr("text-anchor", "middle")
-                // .style("font-weight", "bold")
-                .text("Above average performance, above average pay");
-
-            svg.append("text")
-                .attr("class", "quadrant-label")
-                .attr("x", width - 150)
-                .attr("y", height - 20)
-                .attr("text-anchor", "middle")
-                // .style("font-weight", "bold")
-                .text("Below average performance, above average pay");
-
-            svg.append("text")
-                .attr("class", "quadrant-label")
-                .attr("x", 150)
-                .attr("y", height - 20)
-                .attr("text-anchor", "middle")
-                // .style("font-weight", "bold")
-                .text("Below average performance, below average pay");
-
-            svg.append("text")
-                .attr("class", "quadrant-label")
-                .attr("x", 150)
-                .attr("y", 20)
-                .attr("text-anchor", "middle")
-                // .style("font-weight", "bold")
-                .text("Above average performance, below average pay");
-
             function updateChart() {
-                console.log("Updating chart...");
-                console.log("Updating chart...");
                 const selectedSeason = +d3.select("#season-filter").node().value;
-                const filteredData = data.filter(d => d.Season === selectedSeason && !isNaN(d["Overall Performance Score"]));
-                console.log("Filtered Data:", filteredData);
+                const filteredData = data.filter(d => d.season === selectedSeason && !isNaN(d.overall_score));
                 if (filteredData.length === 0) return;
 
+                xScale.domain(d3.extent(filteredData, d => d.salary)).nice();
+                yScale.domain(d3.extent(filteredData, d => d.overall_score)).nice();
 
+                const avgSalary = d3.mean(filteredData, d => d.salary);
+                const avgPerformance = d3.mean(filteredData, d => d.overall_score);
 
-                xScale.domain(d3.extent(filteredData, d => d.Salary)).nice();
-                yScale.domain(d3.extent(filteredData, d => d["Overall Performance Score"])).nice();
-                // Compute average salary for the season
-                const avgSalary = d3.mean(filteredData, d => d.Salary);
-
-                // Compute average performance score for the season
-                const avgPerformance = d3.mean(filteredData, d => d["Overall Performance Score"]);
-
-                // Add or update the average performance line
-                const avgLine = svg.selectAll(".avg-line").data([avgPerformance]);
-                const avgSalaryLine = svg.selectAll(".avg-salary-line").data([avgSalary]);
-
-                console.log({ avgSalary, avgPerformance });
-
-
-                avgLine.enter().append("line")
-                    .attr("class", "avg-line")
-                    .merge(avgLine)
-                    .transition()
-                    .attr("x1", 0)
-                    .attr("x2", width)
-                    .attr("y1", yScale(avgPerformance))
-                    .attr("y2", yScale(avgPerformance))
-                    .attr("stroke", "red")
-                    .attr("stroke-width", 2)
-                    .attr("stroke-dasharray", "5 5");
-
-
-                // Add or update the average salary line
-                avgSalaryLine.enter().append("line")
-                    .attr("class", "avg-salary-line")
-                    .merge(avgSalaryLine)
-                    .transition()
-                    .attr("x1", xScale(avgSalary))
-                    .attr("x2", xScale(avgSalary))
-                    .attr("y1", 0)
-                    .attr("y2", height)
-                    .attr("stroke", "blue")
-                    .attr("stroke-width", 2)
-                    .attr("stroke-dasharray", "5 5");
-
-
-
-                svg.select(".x-axis").transition().call(xAxis);
                 svg.select(".y-axis").transition().call(yAxis);
 
-                // Add X-axis with tick marks at y = 0
                 const xAxisGroup = svg.selectAll(".x-axis").data([0]);
-
                 xAxisGroup.enter().append("g")
                     .attr("class", "x-axis")
                     .merge(xAxisGroup)
@@ -187,13 +105,8 @@
                     .attr("transform", `translate(0,${yScale(0)})`)
                     .call(xAxis);
 
-                // Add horizontal line at y = 0
-                const zeroLine = svg.selectAll(".zero-line").data([0]);
-
-                zeroLine.enter().append("line")
+                svg.selectAll(".zero-line").data([0]).join("line")
                     .attr("class", "zero-line")
-                    .merge(zeroLine)
-                    .transition()
                     .attr("x1", 0)
                     .attr("x2", width)
                     .attr("y1", yScale(0))
@@ -202,26 +115,42 @@
                     .attr("stroke-width", 1)
                     .attr("stroke-dasharray", "4 2");
 
-                const circles = svg.selectAll("circle").data(filteredData, d => d.Name);
+                svg.selectAll(".avg-line").data([avgPerformance]).join("line")
+                    .attr("class", "avg-line")
+                    .attr("x1", 0)
+                    .attr("x2", width)
+                    .attr("y1", yScale(avgPerformance))
+                    .attr("y2", yScale(avgPerformance))
+                    .attr("stroke", "red")
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", "5 5");
 
-                circles.enter().append("circle")
+                svg.selectAll(".avg-salary-line").data([avgSalary]).join("line")
+                    .attr("class", "avg-salary-line")
+                    .attr("x1", xScale(avgSalary))
+                    .attr("x2", xScale(avgSalary))
+                    .attr("y1", 0)
+                    .attr("y2", height)
+                    .attr("stroke", "blue")
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", "5 5");
+
+                const circles = svg.selectAll("circle").data(filteredData, d => d.name);
+                circles.join("circle")
                     .attr("r", 5)
                     .attr("fill", "steelblue").attr("opacity", 0.7)
                     .on("mouseover", (event, d) => {
                         tooltip.style("display", "block")
-                            .html(`<strong>${d.Name}</strong><br>Team: ${d.Team}<br>Performance: ${d["Overall Performance Score"]}<br>Salary: ₹${d.Salary}`);
+                            .html(`<strong>${d.name || "Unknown"}</strong><br>Salary: ₹${d.salary}<br>Performance: ${d.overall_score}`);
                     })
-                    .on("mousemove", (event) => {
+                    .on("mousemove", event => {
                         tooltip.style("left", (event.pageX + 10) + "px")
                             .style("top", (event.pageY - 10) + "px");
                     })
                     .on("mouseout", () => tooltip.style("display", "none"))
-                    .merge(circles)
                     .transition()
-                    .attr("cx", d => xScale(d.Salary))
-                    .attr("cy", d => yScale(d["Overall Performance Score"]));
-
-                circles.exit().remove();
+                    .attr("cx", d => xScale(d.salary))
+                    .attr("cy", d => yScale(d.overall_score));
             }
 
             updateChart();
