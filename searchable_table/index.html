@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Searchable D3 Table</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            width: 80vw;
+            align-items: center;
+        }
+
+        table {
+            /* width: 80%; */
+            /* border-collapse: collapse; */
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+            cursor: pointer;
+        }
+
+        input {
+            margin-bottom: 10px;
+            padding: 5px;
+            min-width: 300px;
+        }
+
+        h1 {
+            font-size: 36px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <head>
+            <h1>IPL players' salaries, teams and overall performance score</h1>
+        </head>
+        <input type="text" id="search" placeholder="Search...">
+        <table>
+            <thead>
+                <tr id="table-header"></tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+    <script>
+        d3.csv("salaries_with_performance.csv").then(data => {
+            const columns = Object.keys(data[0]);
+            const tableHeader = d3.select("#table-header");
+            const tableBody = d3.select("#table-body");
+            const searchInput = d3.select("#search");
+
+            function renderTable(filteredData) {
+                tableBody.html("");
+                filteredData.forEach(row => {
+                    const tr = tableBody.append("tr");
+                    columns.forEach(col => tr.append("td").text(row[col]));
+                });
+            }
+
+            columns.forEach(col => {
+                tableHeader.append("th").text(col).on("click", function () {
+                    data.sort((a, b) => a[col] > b[col] ? 1 : -1);
+                    renderTable(data);
+                });
+            });
+
+            searchInput.on("input", function () {
+                const keyword = this.value.toLowerCase();
+                const filteredData = data.filter(row =>
+                    columns.some(col => row[col].toLowerCase().includes(keyword))
+                );
+                renderTable(filteredData);
+            });
+
+            renderTable(data);
+        });
+    </script>
+</body>
+
+</html>
