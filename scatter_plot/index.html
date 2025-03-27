@@ -151,6 +151,17 @@
                     .transition()
                     .attr("cx", d => xScale(d.salary))
                     .attr("cy", d => yScale(d.overall_score));
+                svg.append("text")
+                    .attr("x", width - 100)
+                    .attr("y", yScale(avgPerformance) - 5)
+                    .attr("fill", "red")
+                    .text("Avg Performance");
+
+                svg.append("text")
+                    .attr("x", xScale(avgSalary) + 5)
+                    .attr("y", 5)
+                    .attr("fill", "blue")
+                    .text("Avg Salary");
             }
 
             updateChart();
