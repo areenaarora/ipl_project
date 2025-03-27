@@ -127,9 +127,12 @@
                 const selectedSeason = +d3.select("#season-filter").node().value;
                 const filteredData = data.filter(d => d.Season === selectedSeason && !isNaN(d["Overall Performance Score"]));
                 console.log("Filtered Data:", filteredData);
+                if (filteredData.length === 0) return;
 
 
 
+                xScale.domain(d3.extent(filteredData, d => d.Salary)).nice();
+                yScale.domain(d3.extent(filteredData, d => d["Overall Performance Score"])).nice();
                 // Compute average salary for the season
                 const avgSalary = d3.mean(filteredData, d => d.Salary);
 
@@ -139,6 +142,9 @@
                 // Add or update the average performance line
                 const avgLine = svg.selectAll(".avg-line").data([avgPerformance]);
                 const avgSalaryLine = svg.selectAll(".avg-salary-line").data([avgSalary]);
+
+                console.log({ avgSalary, avgPerformance });
+
 
                 avgLine.enter().append("line")
                     .attr("class", "avg-line")
@@ -166,10 +172,7 @@
                     .attr("stroke-width", 2)
                     .attr("stroke-dasharray", "5 5");
 
-                if (filteredData.length === 0) return;
 
-                xScale.domain(d3.extent(filteredData, d => d.Salary)).nice();
-                yScale.domain(d3.extent(filteredData, d => d["Overall Performance Score"])).nice();
 
                 svg.select(".x-axis").transition().call(xAxis);
                 svg.select(".y-axis").transition().call(yAxis);
@@ -206,7 +209,7 @@
                     .attr("fill", "steelblue").attr("opacity", 0.7)
                     .on("mouseover", (event, d) => {
                         tooltip.style("display", "block")
-                            .html(`<strong>${d.Name}</strong><br>Team: ${d.Team}<br>Performance: ${d["Overall Performance Score"]}<br>Salary: $${d.Salary}`);
+                            .html(`<strong>${d.Name}</strong><br>Team: ${d.Team}<br>Performance: ${d["Overall Performance Score"]}<br>Salary: ₹${d.Salary}`);
                     })
                     .on("mousemove", (event) => {
                         tooltip.style("left", (event.pageX + 10) + "px")
