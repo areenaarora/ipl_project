@@ -22,6 +22,7 @@
     <label for="season-filter">Select Season:</label>
     <select id="season-filter"></select>
     <div id="chart-container"></div>
+    <p id="summary"></p>
 
     <script>
         const margin = { top: 20, right: 30, bottom: 50, left: 60 },
@@ -95,27 +96,15 @@
                 const avgSalary = d3.mean(filteredData, d => d.salary);
                 const avgPerformance = d3.mean(filteredData, d => d.overall_score);
 
+                const quadrant1 = filteredData.filter(d => d.salary > avgSalary && d.overall_score < avgPerformance).length;
+                const quadrant3 = filteredData.filter(d => d.salary < avgSalary && d.overall_score > avgPerformance).length;
+
+                document.getElementById("summary").innerText = `In ${selectedSeason}, ${quadrant1} players performed below average but were paid above average. ${quadrant3} players performed above average and were paid below average.`;
+
                 svg.select(".y-axis").transition().call(yAxis);
 
-                const xAxisGroup = svg.selectAll(".x-axis").data([0]);
-                xAxisGroup.enter().append("g")
-                    .attr("class", "x-axis")
-                    .merge(xAxisGroup)
-                    .transition()
-                    .attr("transform", `translate(0,${yScale(0)})`)
-                    .call(xAxis);
-
-                svg.selectAll(".zero-line").data([0]).join("line")
-                    .attr("class", "zero-line")
-                    .attr("x1", 0)
-                    .attr("x2", width)
-                    .attr("y1", yScale(0))
-                    .attr("y2", yScale(0))
-                    .attr("stroke", "black")
-                    .attr("stroke-width", 1)
-                    .attr("stroke-dasharray", "4 2");
-
-                svg.selectAll(".avg-line").data([avgPerformance]).join("line")
+                svg.selectAll(".avg-line").remove();
+                svg.append("line")
                     .attr("class", "avg-line")
                     .attr("x1", 0)
                     .attr("x2", width)
@@ -125,7 +114,8 @@
                     .attr("stroke-width", 2)
                     .attr("stroke-dasharray", "5 5");
 
-                svg.selectAll(".avg-salary-line").data([avgSalary]).join("line")
+                svg.selectAll(".avg-salary-line").remove();
+                svg.append("line")
                     .attr("class", "avg-salary-line")
                     .attr("x1", xScale(avgSalary))
                     .attr("x2", xScale(avgSalary))
@@ -135,35 +125,27 @@
                     .attr("stroke-width", 2)
                     .attr("stroke-dasharray", "5 5");
 
-                const circles = svg.selectAll("circle").data(filteredData, d => d.name);
-                circles.join("circle")
+                const circles = svg.selectAll("circle").data(filteredData, d => d.Name);
+
+                circles.enter().append("circle")
                     .attr("r", 5)
                     .attr("fill", "steelblue").attr("opacity", 0.7)
                     .on("mouseover", (event, d) => {
                         tooltip.style("display", "block")
                             .html(`<strong>${d.name || "Unknown"}</strong><br>Salary: ₹${d.salary}<br>Performance: ${d.overall_score}`);
                     })
-                    .on("mousemove", event => {
+                    .on("mousemove", (event) => {
                         tooltip.style("left", (event.pageX + 10) + "px")
                             .style("top", (event.pageY - 10) + "px");
                     })
                     .on("mouseout", () => tooltip.style("display", "none"))
+                    .merge(circles)
                     .transition()
                     .attr("cx", d => xScale(d.salary))
                     .attr("cy", d => yScale(d.overall_score));
-                svg.append("text")
-                    .attr("x", width - 100)
-                    .attr("y", yScale(avgPerformance) - 5)
-                    .attr("fill", "red")
-                    .text("Avg Performance");
 
-                svg.append("text")
-                    .attr("x", xScale(avgSalary) + 5)
-                    .attr("y", 5)
-                    .attr("fill", "blue")
-                    .text("Avg Salary");
+                circles.exit().remove();
             }
-
             updateChart();
         }).catch(error => console.error("Error loading CSV file:", error));
     </script>
