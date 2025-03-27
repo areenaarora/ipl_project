@@ -44,7 +44,7 @@
             .style("border-radius", "5px")
             .style("display", "none");
 
-        const xScale = d3.scaleLog().range([0, width]);
+        const xScale = d3.scaleLinear().range([0, width]);
         const yScale = d3.scaleLinear().range([height, 0]);
         const xAxis = d3.axisBottom(xScale).ticks(10, ",.0f");
         const yAxis = d3.axisLeft(yScale);
@@ -130,14 +130,6 @@
                     .attr("y1", 0)
                     .attr("y2", height)
                     .attr("stroke", "blue")
-                    .attr("stroke-width", 2)
-                    .attr("stroke-dasharray", "5 5")
-                    .transition()
-                    .attr("x1", 0)
-                    .attr("x2", width)
-                    .attr("y1", yScale(avgPerformance))
-                    .attr("y2", yScale(avgPerformance))
-                    .attr("stroke", "red")
                     .attr("stroke-width", 2)
                     .attr("stroke-dasharray", "5 5");
 
