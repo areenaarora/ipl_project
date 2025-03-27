@@ -58,6 +58,7 @@
 
             const xScale = d3.scaleLinear().range([0, width]);
             const yScale = d3.scaleLinear().range([height, 0]);
+            svg.append("g").attr("class", "x-axis");
             const xAxis = d3.axisBottom(xScale).ticks(10, ",.0f");
             const yAxis = d3.axisLeft(yScale);
 
@@ -117,6 +118,22 @@
                     document.getElementById("summary").innerText = `In ${selectedSeason}, ${quadrant1} players performed below average but were paid above average. ${quadrant3} players performed above average and were paid below average.`;
 
                     svg.select(".y-axis").transition().call(yAxis);
+                    svg.selectAll(".x-axis-line").remove(); // Remove existing x-axis line to prevent duplication
+
+                    svg.append("line")
+                        .attr("class", "x-axis-line")
+                        .attr("x1", 0)
+                        .attr("x2", width)
+                        .attr("y1", yScale(0))
+                        .attr("y2", yScale(0))
+                        .attr("stroke", "black")
+                        .attr("stroke-width", 1);
+
+                    svg.select(".x-axis")
+                        .attr("transform", `translate(0,${yScale(0)})`)
+                        .transition()
+                        .call(d3.axisBottom(xScale).ticks(10).tickFormat(d3.format(",.0f")));
+
 
                     svg.selectAll(".avg-line, .avg-salary-line, .dot").remove();
 
