@@ -95,15 +95,43 @@
                 const filteredData = data.filter(d => d.Season === selectedSeason && !isNaN(d["Overall Performance Score"]));
                 console.log("Filtered Data:", filteredData);
 
+
+
+                // Compute average salary for the season
+                const avgSalary = d3.mean(filteredData, d => d.Salary);
+
                 // Compute average performance score for the season
                 const avgPerformance = d3.mean(filteredData, d => d["Overall Performance Score"]);
 
                 // Add or update the average performance line
                 const avgLine = svg.selectAll(".avg-line").data([avgPerformance]);
+                const avgSalaryLine = svg.selectAll(".avg-salary-line").data([avgSalary]);
 
                 avgLine.enter().append("line")
                     .attr("class", "avg-line")
                     .merge(avgLine)
+                    .transition()
+                    .attr("x1", 0)
+                    .attr("x2", width)
+                    .attr("y1", yScale(avgPerformance))
+                    .attr("y2", yScale(avgPerformance))
+                    .attr("stroke", "red")
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", "5 5");
+
+
+                // Add or update the average salary line
+                avgSalaryLine.enter().append("line")
+                    .attr("class", "avg-salary-line")
+                    .merge(avgSalaryLine)
+                    .transition()
+                    .attr("x1", xScale(avgSalary))
+                    .attr("x2", xScale(avgSalary))
+                    .attr("y1", 0)
+                    .attr("y2", height)
+                    .attr("stroke", "blue")
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", "5 5")
                     .transition()
                     .attr("x1", 0)
                     .attr("x2", width)
